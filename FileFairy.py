@@ -3,7 +3,7 @@ import shutil
 import json
 from datetime import datetime
 
-CATEGORIES = {
+CATEGORIES ={
     "Images": [".jpg",".jpeg",".png",".gif"],
     "Videos": [".mp4",".avi",".mov"],
     "Documents": [".pdf",".docx",".txt"],
@@ -12,25 +12,33 @@ CATEGORIES = {
     "Others": []
 }
 
-LOG_FILE = "file_organizer_log.json"
+LOG_FILE = "file_fairy_log.json"
 UNDO_FILE = "undo.json"
 
 # functions 
 def save_json(data,file):
     with open(file,"w",encoding="utf-8") as f:
         json.dump(data,f,indent=4)
-
+''' while storing each element in new line and indent to make json pretty json.dumps({"a": {"b": {"c": 3}}}, indent=4)
+{
+    "a": {
+        "b": {
+            "c": 3
+        }
+    }
+}
+'''
 def load_json(file):
     if os.path.exists(file):
-        with open(file,"r") as f:
+        with open(file,"r",encoding='utf-8') as f:
             return json.load(f)
     return {}
 def handle_duplicates(path):
-    fn,ext = os.path.splitext(path)
+    fp,ext = os.path.splitext(path)
     counter = 1
     new_path = path
     while os.path.exists(new_path):
-        new_path = f"{fn}({counter}){ext}"
+        new_path = f"{fp}({counter}){ext}"
         counter += 1
     return new_path
 
@@ -62,7 +70,7 @@ def organize_by_type(folder_path):
                         log[file_name] = {"from": file_path,"to": new_path}
                         undo[new_path] = file_path
                     except Exception as e:
-                        log[file_name] = {"from": file_path,"to": f"ERROR: {str(e)}"}
+                        log[file_name] = {"from": file_path,"to": f"ERROR: {str(e)}"}    #str just to be sure nothing goes wrong
                     moved = True
                     break
 
@@ -91,7 +99,7 @@ def show_log_report():
         return
     print("\n📜 File Organizer Log:")
     for file,paths in log.items():
-        if isinstance(paths,dict):
+        if isinstance(paths,dict):                                   #x = 10   print(isinstance(x, int))  # Output: True
             print(f" - {file}: {paths['from']} → {paths['to']}")
         else:
             print(f" -{file}: {paths}")
