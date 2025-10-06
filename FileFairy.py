@@ -91,6 +91,31 @@ def organize_by_type(folder_path):
     save_json(log,LOG_FILE)
     save_json(undo,UNDO_FILE)
 
+def undo_last_operation():
+    undo = load_json(UNDO_FILE)
+    if not undo:
+        print("No operation to undo!")
+        return
+
+    log = load_json(LOG_FILE)
+
+    for new_path, original_path in undo.items():
+        if os.path.exists(new_path):
+            os.makedirs(os.path.dirname(original_path), exist_ok=True)   #folderpath=os.path.dirname("/home/user/project/sha.txt")-->/home/user/project
+
+            try:
+                shutil.move(new_path, original_path)
+                log[f"UNDO-{os.path.basename(new_path)}"] = {                
+                    "from": new_path, "to": original_path                 #os.path.basename("/home/user/project/sha.txt")-->sha.txt
+                } 
+            except Exception as e:
+                log[f"UNDO-{os.path.basename(new_path)}"] = {
+                    "from": new_path, "to": f"ERROR: {str(e)}"
+                }
+
+    os.remove(UNDO_FILE)
+    save_json(log,LOG_FILE)
+    print("Undo completed.")
 
 def show_log_report():
     log = load_json(LOG_FILE)
