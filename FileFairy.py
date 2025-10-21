@@ -91,6 +91,7 @@ def organize_by_type(folder_path):
 
     save_json(log,LOG_FILE)
     save_json(undo,UNDO_FILE)
+    print("Organized by file type.")
 
 def organize_by_date(folder_path):
     log = {}
@@ -103,7 +104,7 @@ def organize_by_date(folder_path):
         file_path = os.path.join(folder_path,file_name)
         if os.path.isfile(file_path):
             timestamp = os.path.getmtime(file_path)
-            date = datetime.datetime.fromtimestamp(timestamp)
+            date = datetime.fromtimestamp(timestamp)
             year = str(date.year)
             month = date.strftime("%B")
 
@@ -118,17 +119,46 @@ def organize_by_date(folder_path):
             
     save_json(log,LOG_FILE)
     save_json(undo,UNDO_FILE)
-    print("✅ Organized by date (Year/Month).")
+    print("Organized by date (Year/Month).")
 def organize_by_size(folder_path):
     log = {}
     undo = {}
     
     log["timestamp"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     log["mode"] = "size"
+
+    size_categories = {
+        "Small(0-1MB)": (0,1*1024*1024),
+        "Medium(1MB-100MB)": (1*1024*1024, 100*1024*1024),
+        "Large(100MB-1GB)": (100*1024*1024, 1024*1024*1024),
+        "Huge(1GB+)": (1024*1024*1024, float("inf")),
+    }
+
+    for file_name in os.listdir(folder_path):
+        file_path = os.path.join(folder_path,file_name)
+        if os.path.isfile(file_path):
+            size = os.path.getsize(file_path)
+
+            for category,(min_size,max_size) in size_categories.items():
+                if min_size <= size < max_size:
+                    target_dir = os.path.join(folder_path,category)
+                    os.makedirs(target_dir,exist_ok=True)
+
+                    new_path = os.path.join(target_dir,file_name)
+                    new_path = handle_duplicates(new_path)
+
+                    try:
+                        shutil.move(file_path, new_path)
+                        log[file_name] = {"from": file_path,"to": new_path}
+                        undo[new_path] = file_path
+                    except Exception as e:
+                        log[file_name] = {"from": file_path,"to": f"ERROR: {str(e)}"}
+                    break
+
+    save_json(log,LOG_FILE)
+    save_json(undo,UNDO_FILE)
+    print("Organized by file size.")
     
-
-
-
 def undo_last_operation():
     undo = load_json(UNDO_FILE)
     if not undo:
@@ -139,12 +169,12 @@ def undo_last_operation():
 
     for new_path, original_path in undo.items():
         if os.path.exists(new_path):
-            os.makedirs(os.path.dirname(original_path), exist_ok=True)   #folderpath=os.path.dirname("/home/user/project/sha.txt")-->/home/user/project
+            os.makedirs(os.path.dirname(original_path),exist_ok=True)   #folderpath=os.path.dirname("/home/user/project/sha.txt")-->/home/user/project
 
             try:
                 shutil.move(new_path, original_path)
                 log[f"UNDO-{os.path.basename(new_path)}"] = {                
-                    "from": new_path, "to": original_path                 #os.path.basename("/home/user/project/sha.txt")-->sha.txt
+                    "from": new_path,"to": original_path                 #os.path.basename("/home/user/project/sha.txt")-->sha.txt
                 } 
             except Exception as e:
                 log[f"UNDO-{os.path.basename(new_path)}"] = {
@@ -160,7 +190,7 @@ def show_log_report():
     if not log:
         print("No logs available")
         return
-    print("\n📜 File Organizer Log:")
+    print("\n File Organizer Log:")
     for file,paths in log.items():
         if isinstance(paths,dict):                                   #x = 10   print(isinstance(x, int))  # Output: True
             print(f" - {file}: {paths['from']} → {paths['to']}")
@@ -190,15 +220,12 @@ def menu():
         elif choice == "4":
             undo_last_operation()
         elif choice == "5":
-            show_log()
+            show_log_report()
         elif choice == "6":
-            print(" Exiting Advanced File Organizer. Goodbye!")
+            print("Exiting File Fairy.Taata!")
             break
         else:
-            print("Invalid choice. Try again.")
+            print("Invalid Choice.Try again.")
 
-# ------------------------------
-# Run Program
-# ------------------------------
 if __name__ == "__main__":
     menu()
