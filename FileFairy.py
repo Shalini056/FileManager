@@ -42,7 +42,13 @@ def handle_duplicates(path):
         counter += 1
     return new_path
 
-  
+def save_json_log(new_log):
+    old_logs = load_json(LOG_FILE)
+    if not isinstance(old_logs,list):
+        old_logs = [old_logs] if old_logs else []
+    old_logs.append(new_log)
+    save_json(old_logs,LOG_FILE)
+     
 def organize_by_type(folder_path):
     log = {}
     undo = {}
@@ -51,6 +57,8 @@ def organize_by_type(folder_path):
     log["mode"] = "type"
 # try to keep history of these logs with time for future or time thookiru
     for file_name in os.listdir(folder_path):
+        if file_name in (LOG_FILE, UNDO_FILE):
+            continue
         file_path = os.path.join(folder_path,file_name)
 
         if os.path.isfile(file_path):
@@ -89,7 +97,7 @@ def organize_by_type(folder_path):
                 except Exception as e:
                     log[file_name] = {"from": file_path,"to": f"ERROR: {str(e)}"}
 
-    save_json(log,LOG_FILE)
+    save_json_log(log)
     save_json(undo,UNDO_FILE)
     print("Organized by file type.")
 
@@ -101,6 +109,8 @@ def organize_by_date(folder_path):
     log["mode"] = "date"
 
     for file_name in os.listdir(folder_path):
+        if file_name in (LOG_FILE, UNDO_FILE):
+            continue
         file_path = os.path.join(folder_path,file_name)
         if os.path.isfile(file_path):
             timestamp = os.path.getmtime(file_path)
@@ -112,12 +122,16 @@ def organize_by_date(folder_path):
             os.makedirs(target_dir,exist_ok=True)
 
             new_path = os.path.join(target_dir,file_name)
-            shutil.move(file_path,new_path)
-
-            log[file_name] = {"from": file_path,"to": new_path}
-            undo[new_path] = file_path
+            new_path = handle_duplicates(new_path)
             
-    save_json(log,LOG_FILE)
+            try:
+                shutil.move(file_path,new_path)
+                log[file_name] = {"from": file_path,"to": new_path}
+                undo[new_path] = file_path
+            except Exception as e:
+                log[file_name] = {"from": file_path, "to": f"ERROR: {str(e)}"}
+                 
+    save_json_log(log)
     save_json(undo,UNDO_FILE)
     print("Organized by date (Year/Month).")
 def organize_by_size(folder_path):
@@ -135,6 +149,8 @@ def organize_by_size(folder_path):
     }
 
     for file_name in os.listdir(folder_path):
+        if file_name in (LOG_FILE, UNDO_FILE):
+            continue
         file_path = os.path.join(folder_path,file_name)
         if os.path.isfile(file_path):
             size = os.path.getsize(file_path)
@@ -155,7 +171,7 @@ def organize_by_size(folder_path):
                         log[file_name] = {"from": file_path,"to": f"ERROR: {str(e)}"}
                     break
 
-    save_json(log,LOG_FILE)
+    save_json_log(log)
     save_json(undo,UNDO_FILE)
     print("Organized by file size.")
     
@@ -165,37 +181,48 @@ def undo_last_operation():
         print("No operation to undo!")
         return
 
-    log = load_json(LOG_FILE)
+    undo_log = {}
+    undo_log["UndoTimestamp"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    undo_log["mode"] = "undo"
 
     for new_path, original_path in undo.items():
         if os.path.exists(new_path):
             os.makedirs(os.path.dirname(original_path),exist_ok=True)   #folderpath=os.path.dirname("/home/user/project/sha.txt")-->/home/user/project
 
             try:
-                shutil.move(new_path, original_path)
-                log[f"UNDO-{os.path.basename(new_path)}"] = {                
+                shutil.move(new_path,original_path)
+                undo_log[f"UNDO-{os.path.basename(new_path)}"] = {                
                     "from": new_path,"to": original_path                 #os.path.basename("/home/user/project/sha.txt")-->sha.txt
                 } 
             except Exception as e:
-                log[f"UNDO-{os.path.basename(new_path)}"] = {
+                undo_log[f"UNDO-{os.path.basename(new_path)}"] = {
                     "from": new_path, "to": f"ERROR: {str(e)}"
                 }
 
     os.remove(UNDO_FILE)
-    save_json(log,LOG_FILE)
+    save_json_log(undo_log)
     print("Undo completed.")
 
 def show_log_report():
-    log = load_json(LOG_FILE)
-    if not log:
+    logs = load_json(LOG_FILE)
+    if not logs:
         print("No logs available")
         return
-    print("\n File Organizer Log:")
-    for file,paths in log.items():
-        if isinstance(paths,dict):                                   #x = 10   print(isinstance(x, int))  # Output: True
-            print(f" - {file}: {paths['from']} → {paths['to']}")
-        else:
-            print(f" -{file}: {paths}")
+    print("\nFile Organizer Logs:")
+    if isinstance(logs,list):
+        for entry in logs:
+            for file,paths in entry.items():
+                if isinstance(paths,dict):
+                    print(f" - {file}: {paths['from']} → {paths['to']}")
+                else:
+                    print(f" - {file}: {paths}")
+    else:
+        # fallback if file contains a single dict
+        for file,paths in logs.items():
+            if isinstance(paths,dict):
+                print(f" - {file}: {paths['from']} → {paths['to']}")
+            else:
+                print(f" - {file}: {paths}")
 def menu():
     while True:
         print("\n Advanced File Organizer")
