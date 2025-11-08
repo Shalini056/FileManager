@@ -202,7 +202,7 @@ def undo_last_operation():
     os.remove(UNDO_FILE)
     save_json_log(undo_log)
      # After moving everything back, clean up empty folders
-    for root, dirs, files in os.walk(".",topdown=False):
+    for root, dirs, files in os.walk(base_folder,topdown=False):
         for d in dirs:
             folder_path = os.path.join(root,d)
             try:
