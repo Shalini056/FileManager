@@ -185,6 +185,10 @@ def undo_last_operation():
     undo_log["UndoTimestamp"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     undo_log["mode"] = "undo"
 
+    # Get the main folder where undo was performed (first file's parent directory)
+    sample_path = list(undo.values())[0]
+    base_folder = os.path.dirname(sample_path)
+    
     for new_path, original_path in undo.items():
         if os.path.exists(new_path):
             os.makedirs(os.path.dirname(original_path),exist_ok=True)   #folderpath=os.path.dirname("/home/user/project/sha.txt")-->/home/user/project
