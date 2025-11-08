@@ -201,6 +201,15 @@ def undo_last_operation():
 
     os.remove(UNDO_FILE)
     save_json_log(undo_log)
+     # After moving everything back, clean up empty folders
+    for root, dirs, files in os.walk(".",topdown=False):
+        for d in dirs:
+            folder_path = os.path.join(root,d)
+            try:
+                if not os.listdir(folder_path):  # if folder is empty
+                    os.rmdir(folder_path)
+            except Exception as e:
+                pass  # ignore errors for safety
     print("Undo completed.")
 
 def show_log_report():
