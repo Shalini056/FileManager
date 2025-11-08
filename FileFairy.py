@@ -187,7 +187,7 @@ def undo_last_operation():
 
     # Get the main folder where undo was performed (first file's parent directory)
     sample_path = list(undo.values())[0]
-    base_folder = os.path.dirname(sample_path)
+    base_folder = os.path.dirname(os.path.dirname(sample_path))  # go one level up from category folder
     
     for new_path, original_path in undo.items():
         if os.path.exists(new_path):
@@ -205,16 +205,19 @@ def undo_last_operation():
 
     os.remove(UNDO_FILE)
     save_json_log(undo_log)
-     # After moving everything back, clean up empty folders
+    # ✅ Delete empty folders inside the organized folder
+    removed_folders = []
     for root, dirs, files in os.walk(base_folder,topdown=False):
         for d in dirs:
             folder_path = os.path.join(root,d)
             try:
-                if not os.listdir(folder_path):  # if folder is empty
+                contents = [f for f in os.listdir(folder_path)
+                            if f.lower() not in ("desktop.ini","thumbs.db")]
+                if not contents:
                     os.rmdir(folder_path)
-            except Exception as e:
-                pass  # ignore errors for safety
-    print("Undo completed.")
+                    removed_folders.append(folder_path)
+            except Exception:
+                pass
 
 def show_log_report():
     logs = load_json(LOG_FILE)
