@@ -98,7 +98,7 @@ def organize_by_type(folder_path):
                     log[file_name] = {"from": file_path,"to": f"ERROR: {str(e)}"}
 
     save_json_log(log)
-    save_json(undo,UNDO_FILE)
+    save_json(undo,UNDO_FILE) #overwrites
     print("Organized by file type.")
 
 def organize_by_date(folder_path):
@@ -142,8 +142,8 @@ def organize_by_size(folder_path):
     log["mode"] = "size"
 
     size_categories = {
-        "Small(0-1MB)": (0,1*1024*1024),
-        "Medium(1MB-100MB)": (1*1024*1024, 100*1024*1024),
+        "Small(0-1MB)": (0,1*1024*1024),                    #1 MB = 1024 KB = 1024 × 1024 bytes,1 GB=1024 MB
+        "Medium(1MB-100MB)": (1*1024*1024, 100*1024*1024),    
         "Large(100MB-1GB)": (100*1024*1024, 1024*1024*1024),
         "Huge(1GB+)": (1024*1024*1024, float("inf")),
     }
@@ -186,8 +186,9 @@ def undo_last_operation():
     undo_log["mode"] = "undo"
 
     # Get the main folder where undo was performed (first file's parent directory)
-    sample_path = list(undo.values())[0]
-    base_folder = os.path.dirname(os.path.dirname(sample_path))  # go one level up from category folder
+    sample_path = list(undo.values())[0]              #["C:/Users/Shalini/Desktop/photo.jpg", "C:/Users/Shalini/Desktop/movie.mp4"]  sample paths is lst[0]
+    base_folder = os.path.dirname(os.path.dirname(sample_path))  # go one level up from category folder (used later for undo)
+    # if original was /root/Images/photo.jpg, then: dirname(sample_path) → /root/Images      dirname(...) again → /root 
     
     for new_path, original_path in undo.items():
         if os.path.exists(new_path):
@@ -203,11 +204,10 @@ def undo_last_operation():
                     "from": new_path, "to": f"ERROR: {str(e)}"
                 }
 
-    os.remove(UNDO_FILE)
+    os.remove(UNDO_FILE) #Delete undo.json so you can’t apply the same undo twice.
     save_json_log(undo_log)
-    # ✅ Delete empty folders inside the organized folder
-    removed_folders = []
-    for root, dirs, files in os.walk(base_folder,topdown=False):
+    #  Delete empty folders inside the organized folder
+    for root, dirs, files in os.walk(base_folder,topdown=False): # root testbytype dirs-images,videos,etc...
         for d in dirs:
             folder_path = os.path.join(root,d)
             try:
@@ -215,7 +215,6 @@ def undo_last_operation():
                             if f.lower() not in ("desktop.ini","thumbs.db")]
                 if not contents:
                     os.rmdir(folder_path)
-                    removed_folders.append(folder_path)
             except Exception:
                 pass
 
@@ -229,7 +228,7 @@ def show_log_report():
         for entry in logs:
             for file,paths in entry.items():
                 if isinstance(paths,dict):
-                    print(f" - {file}: {paths['from']} → {paths['to']}")
+                    print(f" - {file}: {paths['from']} → {paths['to']}") 
                 else:
                     print(f" - {file}: {paths}")
     else:
@@ -270,5 +269,6 @@ def menu():
         else:
             print("Invalid Choice.Try again.")
 
+#Only runs the menu when the file is executed as a script (not when imported as a module).
 if __name__ == "__main__":
     menu()
